@@ -1,0 +1,365 @@
+' ==============================================
+' OUTIL DE SUIVI DE PORTEFEUILLE D'INVESTISSEMENTS
+' VERSION OPTIMISEE
+' ==============================================
+Option Explicit
+
+' === STRUCTURE DE DONNEES ===
+Public Type Investissement
+    nomClient As String
+    typeActif As String
+    nomActif As String
+    dateAchat As Date
+    montantInvesti As Currency
+    valeurActuelle As Currency
+End Type
+
+Public portefeuille() As Investissement
+Public compteur As Integer
+
+' === INITIALISATION ===
+Sub InitialiserPortefeuille()
+    ReDim portefeuille(0)
+    compteur = 0
+    MsgBox "Systeme initialise!", vbInformation
+End Sub
+
+' === MENU PRINCIPAL ===
+Sub MenuPrincipal()
+    Dim choix As String
+    Dim continuer As Boolean
+    continuer = True
+    
+    Do While continuer
+        choix = InputBox("=== GESTIONNAIRE DE PORTEFEUILLE ===" & vbCrLf & vbCrLf & _
+                        "1 - Ajouter investissements" & vbCrLf & _
+                        "2 - Calculer performance" & vbCrLf & _
+                        "3 - Graphique repartition" & vbCrLf & _
+                        "4 - Rapport global" & vbCrLf & _
+                        "5 - Charger donnees exemple" & vbCrLf & _
+                        "6 - Quitter" & vbCrLf & vbCrLf & _
+                        "Votre choix :", "Menu Principal")
+        
+        Select Case choix
+            Case "1": Call AjoutInvestissementsPourClient
+            Case "2": Call CalculerPerformanceClient
+            Case "3": Call CreerGraphiqueClient
+            Case "4": Call RapportSyntheseGlobal
+            Case "5": Call ChargerDonneesExemple
+            Case "6", "": continuer = False
+            Case Else: MsgBox "Choix invalide!", vbExclamation
+        End Select
+    Loop
+End Sub
+
+' === ALGORITHME 1: AJOUT D'INVESTISSEMENTS ===
+Sub AjoutInvestissementsPourClient()
+    Dim nomClient As String
+    Dim continuer As VbMsgBoxResult
+
+    nomClient = InputBox("Nom du client :", "Nouveau Client")
+    If nomClient = "" Then Exit Sub
+
+    Do
+        Call AjoutInvestissementPourNom(nomClient)
+        continuer = MsgBox("Ajouter un autre investissement pour " & nomClient & " ?", _
+                          vbYesNo + vbQuestion, "Continuer ?")
+    Loop While continuer = vbYes
+
+    Call AfficherPerformanceClient(nomClient)
+    Call GrapheParTypeParClientNom(nomClient)
+End Sub
+
+Sub AjoutInvestissementPourNom(nomClient As String)
+    Dim inv As Investissement
+    Dim choix As String
+
+    inv.nomClient = nomClient
+
+    ' Type d'actif simplifie
+    choix = InputBox("Type d'actif:" & vbCrLf & _
+                     "1 - Actions" & vbCrLf & _
+                     "2 - Obligations" & vbCrLf & _
+                     "3 - Fonds" & vbCrLf & _
+                     "4 - Immobilier" & vbCrLf & _
+                     "5 - Crypto/Autres", "Type")
+
+    Select Case choix
+        Case "1": inv.typeActif = "Actions"
+        Case "2": inv.typeActif = "Obligations"
+        Case "3": inv.typeActif = "Fonds"
+        Case "4": inv.typeActif = "Immobilier"
+        Case "5": inv.typeActif = "Crypto/Autres"
+        Case Else: inv.typeActif = "Autre"
+    End Select
+
+    inv.nomActif = InputBox("Nom de l'actif :", "Nom")
+    If inv.nomActif = "" Then Exit Sub
+
+    ' Date d'achat
+    Do
+        Dim dateStr As String
+        dateStr = InputBox("Date d'achat (JJ/MM/AAAA) :", "Date")
+        If dateStr = "" Then Exit Sub
+        If IsDate(dateStr) Then
+            inv.dateAchat = CDate(dateStr)
+            Exit Do
+        Else
+            MsgBox "Format invalide!", vbExclamation
+        End If
+    Loop
+
+    ' Montant investi
+    Do
+        Dim montantStr As String
+        montantStr = InputBox("Montant investi (€) :", "Montant")
+        If montantStr = "" Then Exit Sub
+        If IsNumeric(montantStr) And CDbl(montantStr) > 0 Then
+            inv.montantInvesti = CCur(montantStr)
+            Exit Do
+        Else
+            MsgBox "Montant invalide!", vbExclamation
+        End If
+    Loop
+
+    ' Valeur actuelle
+    Do
+        Dim valeurStr As String
+        valeurStr = InputBox("Valeur actuelle (€) :", "Valeur")
+        If valeurStr = "" Then Exit Sub
+        If IsNumeric(valeurStr) And CDbl(valeurStr) >= 0 Then
+            inv.valeurActuelle = CCur(valeurStr)
+            Exit Do
+        Else
+            MsgBox "Valeur invalide!", vbExclamation
+        End If
+    Loop
+
+    ' Ajout au portefeuille
+    compteur = compteur + 1
+    ReDim Preserve portefeuille(compteur - 1)
+    portefeuille(compteur - 1) = inv
+
+    MsgBox "Investissement ajoute!", vbInformation
+    Call EnregistrerDansExcel
+End Sub
+
+' === ALGORITHME 2: CALCUL DE LA PERFORMANCE ===
+Sub CalculerPerformanceClient()
+    Dim nomClient As String
+    nomClient = InputBox("Nom du client :", "Performance")
+    If nomClient = "" Then Exit Sub
+    Call AfficherPerformanceClient(nomClient)
+End Sub
+
+Sub AfficherPerformanceClient(nomClient As String)
+    Dim i As Integer
+    Dim totalInvesti As Currency, totalActuel As Currency
+    Dim performance As Double, nbInvest As Integer
+
+    For i = 0 To compteur - 1
+        If LCase(portefeuille(i).nomClient) = LCase(nomClient) Then
+            totalInvesti = totalInvesti + portefeuille(i).montantInvesti
+            totalActuel = totalActuel + portefeuille(i).valeurActuelle
+            nbInvest = nbInvest + 1
+        End If
+    Next i
+
+    If nbInvest = 0 Then
+        MsgBox "Aucun investissement pour " & nomClient, vbExclamation
+        Exit Sub
+    End If
+
+    If totalInvesti > 0 Then
+        performance = ((totalActuel - totalInvesti) / totalInvesti) * 100
+    End If
+
+    Dim rapport As String
+    rapport = "=== PERFORMANCE - " & nomClient & " ===" & vbCrLf & vbCrLf & _
+              "Investissements: " & nbInvest & vbCrLf & _
+              "Total investi: " & Format(totalInvesti, "#,##0") & " €" & vbCrLf & _
+              "Valeur actuelle: " & Format(totalActuel, "#,##0") & " €" & vbCrLf & _
+              "Plus/Moins-value: " & Format(totalActuel - totalInvesti, "#,##0") & " €" & vbCrLf & _
+              "Performance: " & Format(performance, "0.00") & "%" & vbCrLf & vbCrLf
+
+    If performance > 10 Then
+        rapport = rapport & "ANALYSE: Excellente performance! ??"
+    ElseIf performance > 0 Then
+        rapport = rapport & "ANALYSE: Performance positive ??"
+    Else
+        rapport = rapport & "ANALYSE: Performance negative ??"
+    End If
+
+    MsgBox rapport, vbInformation, "Performance"
+End Sub
+
+' === ALGORITHME 3: GRAPHIQUE DE REPARTITION ===
+Sub CreerGraphiqueClient()
+    Dim nomClient As String
+    nomClient = InputBox("Nom du client :", "Graphique")
+    If nomClient = "" Then Exit Sub
+    Call GrapheParTypeParClientNom(nomClient)
+End Sub
+
+Sub GrapheParTypeParClientNom(nomClient As String)
+    Dim ws As Worksheet
+    Dim dict As Object
+    Dim i As Integer, row As Integer
+    Dim k As Variant
+
+    Set dict = CreateObject("Scripting.Dictionary")
+
+    ' Agregation par type
+    For i = 0 To compteur - 1
+        If LCase(portefeuille(i).nomClient) = LCase(nomClient) Then
+            If dict.exists(portefeuille(i).typeActif) Then
+                dict(portefeuille(i).typeActif) = dict(portefeuille(i).typeActif) + portefeuille(i).valeurActuelle
+            Else
+                dict.Add portefeuille(i).typeActif, portefeuille(i).valeurActuelle
+            End If
+        End If
+    Next i
+
+    If dict.count = 0 Then
+        MsgBox "Aucun investissement pour " & nomClient, vbExclamation
+        Exit Sub
+    End If
+
+    ' Creation feuille graphique
+    On Error Resume Next
+    Set ws = Worksheets("Graph_" & Replace(nomClient, " ", "_"))
+    If ws Is Nothing Then
+        Set ws = Worksheets.Add
+        ws.Name = "Graph_" & Replace(nomClient, " ", "_")
+    End If
+    On Error GoTo 0
+
+    ws.Cells.Clear
+    ws.Range("A1:B1").Value = Array("Type", "Valeur")
+    ws.Range("A1:B1").Font.Bold = True
+
+    row = 2
+    For Each k In dict.Keys
+        ws.Cells(row, 1).Value = k
+        ws.Cells(row, 2).Value = dict(k)
+        row = row + 1
+    Next k
+
+    ' Graphique circulaire
+    Dim chartObj As ChartObject
+    Set chartObj = ws.ChartObjects.Add(Left:=200, Width:=400, Top:=50, Height:=300)
+    With chartObj.Chart
+        .SetSourceData Source:=ws.Range("A1:B" & dict.count + 1)
+        .ChartType = xlPie
+        .HasTitle = True
+        .ChartTitle.Text = "Repartition - " & nomClient
+        .HasLegend = True
+        .SeriesCollection(1).HasDataLabels = True
+        .SeriesCollection(1).DataLabels.ShowPercentage = True
+    End With
+
+    MsgBox "Graphique cree pour " & nomClient, vbInformation
+End Sub
+
+' === RAPPORT GLOBAL ===
+Sub RapportSyntheseGlobal()
+    Dim clients As Object
+    Dim i As Integer
+    Dim rapport As String
+
+    Set clients = CreateObject("Scripting.Dictionary")
+
+    For i = 0 To compteur - 1
+        If Not clients.exists(portefeuille(i).nomClient) Then
+            clients.Add portefeuille(i).nomClient, 0
+        End If
+    Next i
+
+    rapport = "=== RAPPORT GLOBAL ===" & vbCrLf & vbCrLf & _
+              "Nombre de clients: " & clients.count & vbCrLf & _
+              "Total investissements: " & compteur & vbCrLf & vbCrLf
+
+    Dim k As Variant
+    For Each k In clients.Keys
+        rapport = rapport & "? " & k & vbCrLf
+    Next k
+
+    MsgBox rapport, vbInformation, "Synthese"
+End Sub
+
+' === DONNEES D'EXEMPLE ===
+Sub ChargerDonneesExemple()
+    Call InitialiserPortefeuille
+    
+    ' Annie ERNAUX - Profil conservateur
+    Call AjouterExemple("Annie ERNAUX", "Obligations", "OAT France 10 ans", #1/15/2023#, 50000, 51500)
+    Call AjouterExemple("Annie ERNAUX", "Fonds", "CAC 40 ETF", #3/10/2023#, 30000, 32100)
+    Call AjouterExemple("Annie ERNAUX", "Immobilier", "REIT Europeen", #6/5/2023#, 20000, 19800)
+    
+    ' Georges PEREC - Profil equilibre
+    Call AjouterExemple("Georges PEREC", "Actions", "Apple Inc.", #2/20/2023#, 25000, 29500)
+    Call AjouterExemple("Georges PEREC", "Actions", "Microsoft Corp.", #4/15/2023#, 20000, 24000)
+    Call AjouterExemple("Georges PEREC", "Fonds", "MSCI World ETF", #7/8/2023#, 35000, 38200)
+    Call AjouterExemple("Georges PEREC", "Obligations", "Corporate Bonds", #1/30/2023#, 40000, 41200)
+    
+    ' Pierre BOURDIEU - Profil dynamique
+    Call AjouterExemple("Pierre BOURDIEU", "Actions", "Tesla Inc.", #1/10/2023#, 15000, 18900)
+    Call AjouterExemple("Pierre BOURDIEU", "Actions", "ASML Holding", #3/25/2023#, 20000, 22800)
+    Call AjouterExemple("Pierre BOURDIEU", "Crypto/Autres", "Bitcoin ETF", #5/22/2023#, 10000, 8500)
+    Call AjouterExemple("Pierre BOURDIEU", "Fonds", "NASDAQ 100 ETF", #6/30/2023#, 25000, 28750)
+
+    Call EnregistrerDansExcel
+    
+    MsgBox "Donnees exemple chargees!" & vbCrLf & vbCrLf & _
+           "? Annie ERNAUX (Conservateur)" & vbCrLf & _
+           "? Georges PEREC (Equilibre)" & vbCrLf & _
+           "? Pierre BOURDIEU (Dynamique)", vbInformation
+End Sub
+
+Sub AjouterExemple(nomClient As String, typeActif As String, nomActif As String, _
+                  dateAchat As Date, montantInvesti As Currency, valeurActuelle As Currency)
+    Dim inv As Investissement
+    
+    inv.nomClient = nomClient
+    inv.typeActif = typeActif
+    inv.nomActif = nomActif
+    inv.dateAchat = dateAchat
+    inv.montantInvesti = montantInvesti
+    inv.valeurActuelle = valeurActuelle
+    
+    compteur = compteur + 1
+    ReDim Preserve portefeuille(compteur - 1)
+    portefeuille(compteur - 1) = inv
+End Sub
+
+' === ENREGISTREMENT EXCEL ===
+Sub EnregistrerDansExcel()
+    Dim ws As Worksheet
+    Dim i As Integer
+
+    On Error Resume Next
+    Set ws = Worksheets("Portefeuille")
+    If ws Is Nothing Then
+        Set ws = Worksheets.Add
+        ws.Name = "Portefeuille"
+    End If
+    On Error GoTo 0
+
+    ws.Cells.ClearContents
+    
+    ' En-tetes
+    ws.Range("A1:F1").Value = Array("Client", "Type", "Actif", "Date achat", "Investi (€)", "Valeur (€)")
+    ws.Range("A1:F1").Font.Bold = True
+
+    ' Donnees
+    For i = 0 To compteur - 1
+        ws.Cells(i + 2, 1).Value = portefeuille(i).nomClient
+        ws.Cells(i + 2, 2).Value = portefeuille(i).typeActif
+        ws.Cells(i + 2, 3).Value = portefeuille(i).nomActif
+        ws.Cells(i + 2, 4).Value = portefeuille(i).dateAchat
+        ws.Cells(i + 2, 5).Value = portefeuille(i).montantInvesti
+        ws.Cells(i + 2, 6).Value = portefeuille(i).valeurActuelle
+    Next i
+    
+    ws.Columns("A:F").AutoFit
+End Sub
