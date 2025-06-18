@@ -1,0 +1,546 @@
+' ==============================================
+' OUTIL DE PLANIFICATION DE LA RETRAITE
+' Inspire des strategies d'investissement de Warren Buffett
+' ==============================================
+Option Explicit
+
+' Structure principale du profil client
+Public Type ProfilRetraite
+    nomClient As String
+    ageActuel As Integer
+    ageRetraite As Integer
+    esperanceVie As Integer
+    depensesAnnuelles As Currency
+    revenuPensionPublique As Currency
+    revenuPensionPrivee As Currency
+    epargneActuelle As Currency
+    capaciteEpargneAnnuelle As Currency
+    toleranceRisque As String
+    objectifPatrimoine As Currency
+End Type
+
+' Structure pour les scenarios d'investissement
+Public Type ScenarioInvestissement
+    nomScenario As String
+    tauxRendementActions As Double
+    tauxRendementObligations As Double
+    tauxInflation As Double
+    allocationActions As Double
+    allocationObligations As Double
+    allocationLiquidites As Double
+    fraisGestion As Double
+End Type
+
+' Variables globales
+Dim profils() As ProfilRetraite
+Dim scenarios() As ScenarioInvestissement
+Dim compteurProfils As Integer
+Dim compteurScenarios As Integer
+
+' ==============================================
+' INITIALISATION DU SYSTEME
+' ==============================================
+
+' Initialise tous les composants du systeme
+Sub InitialiserSysteme()
+    Call InitialiserProfils
+    Call InitialiserScenarios
+    Call CreerInterfaceUtilisateur
+End Sub
+
+' Initialise la liste des profils clients
+Sub InitialiserProfils()
+    ReDim profils(1 To 10) ' Capacite pour 10 profils
+    compteurProfils = 0
+    
+    ' Creer des profils d'exemple
+    Call CreerProfilsExemples
+End Sub
+
+' Initialise les scenarios d'investissement pre-definis
+Sub InitialiserScenarios()
+    ReDim scenarios(1 To 5)
+    compteurScenarios = 0
+    
+    ' Scenario 1: Strategie Buffett Conservative
+    Call AjouterScenario("Buffett Conservateur", 0.08, 0.04, 0.025, 0.7, 0.25, 0.05, 0.005)
+    
+    ' Scenario 2: Strategie Buffett Equilibree
+    Call AjouterScenario("Buffett Equilibre", 0.1, 0.04, 0.025, 0.8, 0.15, 0.05, 0.007)
+    
+    ' Scenario 3: Strategie Buffett Agressive
+    Call AjouterScenario("Buffett Agressif", 0.12, 0.04, 0.025, 0.9, 0.05, 0.05, 0.01)
+    
+    ' Scenario 4: Strategie Defensive
+    Call AjouterScenario("Defensif", 0.06, 0.035, 0.02, 0.4, 0.5, 0.1, 0.003)
+    
+    ' Scenario 5: Strategie Croissance
+    Call AjouterScenario("Croissance", 0.15, 0.045, 0.03, 0.95, 0#, 0.05, 0.015)
+End Sub
+
+' Ajoute un scenario d'investissement
+Sub AjouterScenario(nom As String, rendActions As Double, rendOblig As Double, _
+                   inflation As Double, allocActions As Double, allocOblig As Double, _
+                   allocLiq As Double, frais As Double)
+    compteurScenarios = compteurScenarios + 1
+    
+    With scenarios(compteurScenarios)
+        .nomScenario = nom
+        .tauxRendementActions = rendActions
+        .tauxRendementObligations = rendOblig
+        .tauxInflation = inflation
+        .allocationActions = allocActions
+        .allocationObligations = allocOblig
+        .allocationLiquidites = allocLiq
+        .fraisGestion = frais
+    End With
+End Sub
+
+' ==============================================
+' GESTION DES PROFILS CLIENTS
+' ==============================================
+
+' Cree trois profils d'exemple avec des caracteristiques differentes
+Sub CreerProfilsExemples()
+    Dim p1 As ProfilRetraite, p2 As ProfilRetraite, p3 As ProfilRetraite
+    
+    ' Profil 1: Jeune cadre ambitieux (Approche Buffett - Commencer tot)
+    With p1
+        .nomClient = "Marie Dupont"
+        .ageActuel = 30
+        .ageRetraite = 60
+        .esperanceVie = 85
+        .depensesAnnuelles = 60000
+        .revenuPensionPublique = 25000
+        .revenuPensionPrivee = 15000
+        .epargneActuelle = 50000
+        .capaciteEpargneAnnuelle = 15000
+        .toleranceRisque = "Elevee"
+        .objectifPatrimoine = 1500000
+    End With
+    
+    ' Profil 2: Cadre experimente (Approche Buffett - Investissement regulier)
+    With p2
+        .nomClient = "Pierre Martin"
+        .ageActuel = 45
+        .ageRetraite = 65
+        .esperanceVie = 82
+        .depensesAnnuelles = 80000
+        .revenuPensionPublique = 30000
+        .revenuPensionPrivee = 20000
+        .epargneActuelle = 300000
+        .capaciteEpargneAnnuelle = 25000
+        .toleranceRisque = "Moderee"
+        .objectifPatrimoine = 2000000
+    End With
+    
+    ' Profil 3: Pre-retraite (Approche Buffett - Preservation du capital)
+    With p3
+        .nomClient = "Jean Dubois"
+        .ageActuel = 55
+        .ageRetraite = 62
+        .esperanceVie = 80
+        .depensesAnnuelles = 70000
+        .revenuPensionPublique = 28000
+        .revenuPensionPrivee = 12000
+        .epargneActuelle = 800000
+        .capaciteEpargneAnnuelle = 20000
+        .toleranceRisque = "Faible"
+        .objectifPatrimoine = 1800000
+    End With
+    
+    ' Ajouter les profils au systeme
+    Call AjouterProfil(p1)
+    Call AjouterProfil(p2)
+    Call AjouterProfil(p3)
+End Sub
+
+' Ajoute un profil a la liste
+Sub AjouterProfil(p As ProfilRetraite)
+    compteurProfils = compteurProfils + 1
+    profils(compteurProfils) = p
+End Sub
+
+' Interface pour creer un nouveau profil client
+Sub CreerNouveauProfil()
+    Dim p As ProfilRetraite
+    Dim inputStr As String
+    Dim continuer As Boolean
+    
+    continuer = True
+    
+    ' Saisie des informations du client
+    p.nomClient = InputBox("Nom du client:", "Nouveau Profil")
+    If p.nomClient = "" Then Exit Sub
+    
+    ' Age actuel
+    Do While continuer
+        inputStr = InputBox("Age actuel du client:", "Age Actuel")
+        If inputStr = "" Then Exit Sub
+        If IsNumeric(inputStr) And CInt(inputStr) > 18 And CInt(inputStr) < 80 Then
+            p.ageActuel = CInt(inputStr)
+            continuer = False
+        Else
+            MsgBox "Veuillez entrer un age valide (18-80 ans)"
+        End If
+    Loop
+    
+    continuer = True
+    
+    ' Age de retraite souhaite
+    Do While continuer
+        inputStr = InputBox("Age de retraite souhaite:", "Age de Retraite")
+        If inputStr = "" Then Exit Sub
+        If IsNumeric(inputStr) And CInt(inputStr) > p.ageActuel And CInt(inputStr) <= 70 Then
+            p.ageRetraite = CInt(inputStr)
+            continuer = False
+        Else
+            MsgBox "L'age de retraite doit etre superieur a l'age actuel et inferieur a 70 ans"
+        End If
+    Loop
+    
+    ' Esperance de vie
+    p.esperanceVie = p.ageRetraite + 20 ' Valeur par defaut
+    inputStr = InputBox("Esperance de vie estimee (defaut: " & p.esperanceVie & "):", "Esperance de Vie")
+    If inputStr <> "" And IsNumeric(inputStr) Then
+        p.esperanceVie = CInt(inputStr)
+    End If
+    
+    ' Autres informations financieres
+    p.depensesAnnuelles = CCur(InputBox("Depenses annuelles souhaitees a la retraite (€):", "Depenses Annuelles", "60000"))
+    p.revenuPensionPublique = CCur(InputBox("Revenu pension publique estime (€/an):", "Pension Publique", "25000"))
+    p.revenuPensionPrivee = CCur(InputBox("Revenu pension privee estime (€/an):", "Pension Privee", "15000"))
+    p.epargneActuelle = CCur(InputBox("Epargne actuelle disponible (€):", "Epargne Actuelle", "100000"))
+    p.capaciteEpargneAnnuelle = CCur(InputBox("Capacite d'epargne annuelle (€):", "Epargne Annuelle", "20000"))
+    
+    ' Tolerance au risque
+    Dim reponseRisque As Integer
+    reponseRisque = MsgBox("Tolerance au risque:" & vbCrLf & _
+                          "Oui = Elevee" & vbCrLf & _
+                          "Non = Moderee" & vbCrLf & _
+                          "Annuler = Faible", vbYesNoCancel, "Tolerance au Risque")
+    
+    Select Case reponseRisque
+        Case vbYes: p.toleranceRisque = "Elevee"
+        Case vbNo: p.toleranceRisque = "Moderee"
+        Case vbCancel: p.toleranceRisque = "Faible"
+    End Select
+    
+    ' Objectif de patrimoine
+    p.objectifPatrimoine = CCur(InputBox("Objectif de patrimoine a la retraite (€):", "Objectif Patrimoine", "1500000"))
+    
+    ' Ajouter le profil
+    Call AjouterProfil(p)
+    
+    MsgBox "Profil cree avec succes pour " & p.nomClient
+    
+    ' Proposer une analyse immediate
+    If MsgBox("Souhaitez-vous analyser ce profil maintenant?", vbYesNo) = vbYes Then
+        Call AnalyserProfil(compteurProfils)
+    End If
+End Sub
+
+' ==============================================
+' ALGORITHME D'ESTIMATION DES BESOINS FINANCIERS
+' ==============================================
+
+' Calcule les besoins financiers totaux a la retraite
+Function EstimationBesoinFinancier(profil As ProfilRetraite) As Currency
+    Dim dureeRetraite As Integer
+    Dim deficitAnnuel As Currency
+    Dim besoinTotal As Currency
+    Dim facteurInflation As Double
+    
+    ' Duree de la retraite
+    dureeRetraite = profil.esperanceVie - profil.ageRetraite
+    
+    ' Deficit annuel (depenses - revenus)
+    deficitAnnuel = profil.depensesAnnuelles - profil.revenuPensionPublique - profil.revenuPensionPrivee
+    
+    ' Si pas de deficit, pas de besoin additionnel
+    If deficitAnnuel <= 0 Then
+        EstimationBesoinFinancier = 0
+        Exit Function
+    End If
+    
+    ' Facteur d'inflation (2.5% par an en moyenne)
+    facteurInflation = (1 + 0.025) ^ (profil.ageRetraite - profil.ageActuel)
+    
+    ' Ajustement pour l'inflation
+    deficitAnnuel = deficitAnnuel * facteurInflation
+    
+    ' Calcul du besoin total avec valeur actuelle
+    besoinTotal = CalculerValeurActuelle(deficitAnnuel, dureeRetraite, 0.04)
+    
+    EstimationBesoinFinancier = besoinTotal
+End Function
+
+' Calcule la valeur actuelle d'une serie de paiements
+Function CalculerValeurActuelle(paiementAnnuel As Currency, nbAnnees As Integer, tauxActualisation As Double) As Currency
+    Dim valeurActuelle As Currency
+    Dim i As Integer
+    
+    For i = 1 To nbAnnees
+        valeurActuelle = valeurActuelle + paiementAnnuel / ((1 + tauxActualisation) ^ i)
+    Next i
+    
+    CalculerValeurActuelle = valeurActuelle
+End Function
+
+' ==============================================
+' SIMULATION DE SCENARIOS D'INVESTISSEMENT
+' ==============================================
+
+' Simule la croissance du patrimoine selon differents scenarios
+Function SimulerCroissancePatrimoine(profil As ProfilRetraite, scenario As ScenarioInvestissement) As Currency
+    Dim patrimoineActuel As Currency
+    Dim anneesJusquRetraite As Integer
+    Dim rendementMoyen As Double
+    Dim i As Integer
+    
+    patrimoineActuel = profil.epargneActuelle
+    anneesJusquRetraite = profil.ageRetraite - profil.ageActuel
+    
+    ' Calcul du rendement moyen pondere (methode Buffett)
+    rendementMoyen = (scenario.allocationActions * scenario.tauxRendementActions) + _
+                     (scenario.allocationObligations * scenario.tauxRendementObligations) + _
+                     (scenario.allocationLiquidites * 0.01) - scenario.fraisGestion
+    
+    ' Simulation annee par annee
+    For i = 1 To anneesJusquRetraite
+        ' Croissance du patrimoine existant
+        patrimoineActuel = patrimoineActuel * (1 + rendementMoyen)
+        
+        ' Ajout de l'epargne annuelle
+        patrimoineActuel = patrimoineActuel + profil.capaciteEpargneAnnuelle
+        
+        ' Ajustement pour l'inflation sur l'epargne
+        profil.capaciteEpargneAnnuelle = profil.capaciteEpargneAnnuelle * (1 + scenario.tauxInflation)
+    Next i
+    
+    SimulerCroissancePatrimoine = patrimoineActuel
+End Function
+
+' Evalue tous les scenarios pour un profil donne
+Sub EvaluerTousScenarios(numeroProfil As Integer)
+    Dim i As Integer
+    Dim profil As ProfilRetraite
+    Dim patrimoineProjet As Currency
+    Dim besoinFinancier As Currency
+    Dim resultat As String
+    
+    If numeroProfil < 1 Or numeroProfil > compteurProfils Then
+        MsgBox "Profil invalide"
+        Exit Sub
+    End If
+    
+    profil = profils(numeroProfil)
+    besoinFinancier = EstimationBesoinFinancier(profil)
+    
+    resultat = "=== ANALYSE COMPLETE POUR " & UCase(profil.nomClient) & " ===" & vbCrLf & vbCrLf
+    resultat = resultat & "Besoin financier estime: " & Format(besoinFinancier, "#,##0 €") & vbCrLf
+    resultat = resultat & "Patrimoine actuel: " & Format(profil.epargneActuelle, "#,##0 €") & vbCrLf
+    resultat = resultat & "Objectif de patrimoine: " & Format(profil.objectifPatrimoine, "#,##0 €") & vbCrLf & vbCrLf
+    
+    resultat = resultat & "SIMULATION DES SCENARIOS:" & vbCrLf
+    resultat = resultat & String(50, "-") & vbCrLf
+    
+    For i = 1 To compteurScenarios
+        patrimoineProjet = SimulerCroissancePatrimoine(profil, scenarios(i))
+        
+        resultat = resultat & scenarios(i).nomScenario & ":" & vbCrLf
+        resultat = resultat & "  Patrimoine projete: " & Format(patrimoineProjet, "#,##0 €") & vbCrLf
+        resultat = resultat & "  Ecart vs objectif: " & Format(patrimoineProjet - profil.objectifPatrimoine, "#,##0 €") & vbCrLf
+        
+        If patrimoineProjet >= profil.objectifPatrimoine Then
+            resultat = resultat & "  ? OBJECTIF ATTEINT" & vbCrLf
+        Else
+            resultat = resultat & "  ? Objectif non atteint" & vbCrLf
+        End If
+        resultat = resultat & vbCrLf
+    Next i
+    
+    ' Ajouter la recommandation Buffett
+    resultat = resultat & GenererRecommandation(profil)
+    
+    ' Afficher les resultats
+    MsgBox resultat, vbInformation, "Analyse Complete - " & profil.nomClient
+End Sub
+
+' ==============================================
+' RECOMMANDATIONS INSPIREES DE WARREN BUFFETT
+' ==============================================
+
+' Genere une recommandation personnalisee basee sur les principes de Buffett
+Function GenererRecommandation(profil As ProfilRetraite) As String
+    Dim recommandation As String
+    Dim anneesJusquRetraite As Integer
+    
+    anneesJusquRetraite = profil.ageRetraite - profil.ageActuel
+    
+    recommandation = "RECOMMANDATIONS BUFFETT:" & vbCrLf
+    recommandation = recommandation & String(30, "=") & vbCrLf
+    
+    ' Recommandations selon l'age et l'horizon
+    If anneesJusquRetraite > 20 Then
+        recommandation = recommandation & "? HORIZON LONG - Strategie agressive recommandee" & vbCrLf
+        recommandation = recommandation & "? Privilegier les actions de qualite (80-90%)" & vbCrLf
+        recommandation = recommandation & "? Investir regulierement (DCA - Dollar Cost Averaging)" & vbCrLf
+        recommandation = recommandation & "? Reinvestir tous les dividendes" & vbCrLf
+    ElseIf anneesJusquRetraite > 10 Then
+        recommandation = recommandation & "? HORIZON MOYEN - Strategie equilibree" & vbCrLf
+        recommandation = recommandation & "? Mix actions/obligations (70/30)" & vbCrLf
+        recommandation = recommandation & "? Diversification sectorielle" & vbCrLf
+        recommandation = recommandation & "? Commencer a securiser progressivement" & vbCrLf
+    Else
+        recommandation = recommandation & "? HORIZON COURT - Preservation du capital" & vbCrLf
+        recommandation = recommandation & "? Reduire l'exposition actions (40-50%)" & vbCrLf
+        recommandation = recommandation & "? Privilegier la qualite et la securite" & vbCrLf
+        recommandation = recommandation & "? Constituer une reserve de liquidites" & vbCrLf
+    End If
+    
+    recommandation = recommandation & vbCrLf & "PRINCIPES FONDAMENTAUX:" & vbCrLf
+    recommandation = recommandation & "? 'Le temps est l'ami de l'investisseur'" & vbCrLf
+    recommandation = recommandation & "? Investir dans ce que vous comprenez" & vbCrLf
+    recommandation = recommandation & "? Privilegier la qualite sur la quantite" & vbCrLf
+    recommandation = recommandation & "? Rester discipline et patient" & vbCrLf
+    
+    GenererRecommandation = recommandation
+End Function
+
+' ==============================================
+' INTERFACE UTILISATEUR ET RAPPORTS
+' ==============================================
+
+' Cree l'interface principale
+Sub CreerInterfaceUtilisateur()
+    Dim choix As String
+    Dim continuer As Boolean
+    
+    continuer = True
+    
+    Do While continuer
+        choix = InputBox("=== OUTIL DE PLANIFICATION RETRAITE ===" & vbCrLf & vbCrLf & _
+                        "1 - Creer un nouveau profil" & vbCrLf & _
+                        "2 - Analyser un profil existant" & vbCrLf & _
+                        "3 - Generer rapport complet" & vbCrLf & _
+                        "4 - Voir profils d'exemple" & vbCrLf & _
+                        "5 - Quitter" & vbCrLf & vbCrLf & _
+                        "Votre choix:", "Menu Principal")
+        
+        Select Case choix
+            Case "1"
+                Call CreerNouveauProfil
+            Case "2"
+                Call MenuAnalyseProfil
+            Case "3"
+                Call GenererRapportComplet
+            Case "4"
+                Call AfficherProfilsExemples
+            Case "5", ""
+                continuer = False
+            Case Else
+                MsgBox "Choix invalide"
+        End Select
+    Loop
+End Sub
+
+' Menu pour analyser un profil
+Sub MenuAnalyseProfil()
+    Dim listeProfils As String
+    Dim choix As String
+    Dim i As Integer
+    
+    If compteurProfils = 0 Then
+        MsgBox "Aucun profil disponible"
+        Exit Sub
+    End If
+    
+    listeProfils = "Selectionnez un profil a analyser:" & vbCrLf & vbCrLf
+    For i = 1 To compteurProfils
+        listeProfils = listeProfils & i & " - " & profils(i).nomClient & vbCrLf
+    Next i
+    
+    choix = InputBox(listeProfils, "Analyse de Profil")
+    
+    If IsNumeric(choix) Then
+        If CInt(choix) >= 1 And CInt(choix) <= compteurProfils Then
+            Call EvaluerTousScenarios(CInt(choix))
+        Else
+            MsgBox "Numero de profil invalide"
+        End If
+    End If
+End Sub
+
+' Analyse un profil specifique
+Sub AnalyserProfil(numeroProfil As Integer)
+    Call EvaluerTousScenarios(numeroProfil)
+End Sub
+
+' Affiche les profils d'exemple
+Sub AfficherProfilsExemples()
+    Dim i As Integer
+    Dim info As String
+    
+    info = "=== PROFILS D'EXEMPLE ===" & vbCrLf & vbCrLf
+    
+    For i = 1 To 3 ' Les 3 premiers profils sont les exemples
+        If i <= compteurProfils Then
+            With profils(i)
+                info = info & i & ". " & .nomClient & vbCrLf
+                info = info & "   Age: " & .ageActuel & " ans (retraite a " & .ageRetraite & " ans)" & vbCrLf
+                info = info & "   Epargne: " & Format(.epargneActuelle, "#,##0 €") & vbCrLf
+                info = info & "   Tolerance: " & .toleranceRisque & vbCrLf & vbCrLf
+            End With
+        End If
+    Next i
+    
+    MsgBox info, vbInformation, "Profils d'Exemple"
+End Sub
+
+' Genere un rapport complet pour tous les profils
+Sub GenererRapportComplet()
+    Dim i As Integer
+    
+    If compteurProfils = 0 Then
+        MsgBox "Aucun profil disponible pour le rapport"
+        Exit Sub
+    End If
+    
+    For i = 1 To compteurProfils
+        Call EvaluerTousScenarios(i)
+        If i < compteurProfils Then
+            MsgBox "Appuyez sur OK pour continuer avec le profil suivant..."
+        End If
+    Next i
+    
+    MsgBox "Rapport complet genere pour tous les profils", vbInformation
+End Sub
+
+' ==============================================
+' PROCEDURES DE LANCEMENT
+' ==============================================
+
+' Procedure principale de lancement
+Sub LancerPlanificateurRetraite()
+    Call InitialiserSysteme
+End Sub
+
+' Test rapide avec les profils d'exemple
+Sub TestRapide()
+    Call InitialiserSysteme
+    
+    MsgBox "Test avec les 3 profils d'exemple..."
+    
+    ' Analyser les 3 profils d'exemple
+    Dim i As Integer
+    For i = 1 To 3
+        Call EvaluerTousScenarios(i)
+        If i < 3 Then
+            MsgBox "Profil " & i & " analyse. Cliquez OK pour le suivant..."
+        End If
+    Next i
+    
+    MsgBox "Test termine avec succes!"
+End Sub
+
