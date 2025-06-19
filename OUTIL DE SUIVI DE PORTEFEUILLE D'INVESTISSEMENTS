@@ -220,7 +220,7 @@ Sub GrapheParTypeParClientNom(nomClient As String)
         End If
     Next i
 
-    If dict.count = 0 Then
+    If dict.Count = 0 Then
         MsgBox "Aucun investissement pour " & nomClient, vbExclamation
         Exit Sub
     End If
@@ -249,7 +249,7 @@ Sub GrapheParTypeParClientNom(nomClient As String)
     Dim chartObj As ChartObject
     Set chartObj = ws.ChartObjects.Add(Left:=200, Width:=400, Top:=50, Height:=300)
     With chartObj.Chart
-        .SetSourceData Source:=ws.Range("A1:B" & dict.count + 1)
+        .SetSourceData Source:=ws.Range("A1:B" & dict.Count + 1)
         .ChartType = xlPie
         .HasTitle = True
         .ChartTitle.Text = "Repartition - " & nomClient
@@ -276,7 +276,7 @@ Sub RapportSyntheseGlobal()
     Next i
 
     rapport = "=== RAPPORT GLOBAL ===" & vbCrLf & vbCrLf & _
-              "Nombre de clients: " & clients.count & vbCrLf & _
+              "Nombre de clients: " & clients.Count & vbCrLf & _
               "Total investissements: " & compteur & vbCrLf & vbCrLf
 
     Dim k As Variant
@@ -363,3 +363,4 @@ Sub EnregistrerDansExcel()
     
     ws.Columns("A:F").AutoFit
 End Sub
+
